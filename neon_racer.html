@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Racer - مسابقه تونلی سایبرپانک</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Vazirmatn:wght@400;700&display=swap');
+
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-pink: #ff00ff;
+            --neon-green: #00ff41;
+            --neon-yellow: #ffee00;
+            --bg-dark: #050505;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            overflow: hidden;
+            font-family: 'Vazirmatn', sans-serif;
+            color: white;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* UI Overlay - Glassmorphism */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+        }
+
+        .hud-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 15px 25px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            pointer-events: auto;
+            transition: all 0.3s ease;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .score-container {
+            text-align: right;
+        }
+
+        .score-label {
+            font-size: 0.9rem;
+            color: var(--neon-cyan);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .score-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            font-weight: 900;
+            text-shadow: 0 0 10px var(--neon-cyan);
+        }
+
+        .speed-container {
+            text-align: left;
+        }
+
+        .speed-bar {
+            width: 200px;
+            height: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .speed-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--neon-green), var(--neon-yellow), var(--neon-pink));
+            width: 0%;
+            transition: width 0.1s linear;
+            box-shadow: 0 0 10px var(--neon-pink);
+        }
+
+        /* Menus */
+        .menu-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(15px);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            transition: opacity 0.5s ease;
+        }
+
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 4rem;
+            background: linear-gradient(to right, var(--neon-cyan), var(--neon-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 243, 255, 0.5);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            color: #ccc;
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        .btn {
+            background: rgba(0, 243, 255, 0.1);
+            border: 2px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-family: 'Vazirmatn', sans-serif;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            background: var(--neon-cyan);
+            color: black;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.6);
+            transform: scale(1.05);
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .controls-hint {
+            margin-top: 30px;
+            color: #888;
+            font-size: 0.9rem;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .key {
+            display: inline-block;
+            padding: 5px 10px;
+            border: 1px solid #666;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.1);
+            margin: 0 3px;
+            font-family: monospace;
+        }
+
+        /* Game Over Specifics */
+        .final-score {
+            font-size: 3rem;
+            color: white;
+            margin: 20px 0;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .high-score-label {
+            color: var(--neon-yellow);
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+
+        /* Mobile Controls */
+        .mobile-controls {
+            display: none;
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            justify-content: space-between;
+            padding: 0 40px;
+            pointer-events: auto;
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            .mobile-controls {
+                display: flex;
+            }
+            .controls-hint {
+                display: none;
+            }
+        }
+
+        .touch-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            color: white;
+            backdrop-filter: blur(5px);
+            touch-action: manipulation;
+        }
+        
+        .touch-btn:active {
+            background: rgba(0, 243, 255, 0.3);
+            border-color: var(--neon-cyan);
+        }
+
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-layer">
+        <div class="top-bar">
+            <div class="hud-panel score-container">
+                <div class="score-label">امتیاز</div>
+                <div class="score-value" id="scoreDisplay">0</div>
+            </div>
+            <div class="hud-panel speed-container">
+                <div class="score-label">سرعت</div>
+                <div class="speed-bar">
+                    <div class="speed-fill" id="speedFill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mobile-controls">
+            <div class="touch-btn" id="btnLeft">◄</div>
+            <div class="touch-btn" id="btnRight">►</div>
+        </div>
+    </div>
+
+    <!-- Start Menu -->
+    <div id="startMenu" class="menu-screen">
+        <h1>NEON RACER</h1>
+        <h2>تونل بی‌نهایت سایبرپانک</h2>
+        <button class="btn" id="startBtn">شروع مسابقه</button>
+        <div class="controls-hint">
+            کنترل با <span class="key">←</span> <span class="key">→</span> یا <span class="key">A</span> <span class="key">D</span><br>
+            یا لمس صفحه در موبایل
+        </div>
+    </div>
+
+    <!-- Game Over Menu -->
+    <div id="gameOverMenu" class="menu-screen hidden">
+        <h1 style="color: var(--neon-pink); -webkit-text-fill-color: var(--neon-pink);">سقوط کردید!</h1>
+        <div class="final-score" id="finalScore">0</div>
+        <div class="high-score-label" id="highScoreLabel">رکورد قبلی: 0</div>
+        <button class="btn" id="restartBtn">تلاش مجدد</button>
+    </div>
+
+<script>
+/**
+ * NEON RACER - Core Game Logic
+ * Implements Object Pooling, Procedural Audio, Custom Physics, and High-Performance Rendering
+ */
+
+// --- Audio System (Procedural Synthesis) ---
+class AudioSynth {
+    constructor() {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.value = 0.3;
+        this.masterGain.connect(this.ctx.destination);
+        this.enabled = true;
+    }
+
+    resume() {
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+    }
+
+    playTone(freq, type, duration, vol = 1) {
+        if (!this.enabled) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+    }
+
+    playCrash() {
+        // Noise buffer for explosion
+        if (!this.enabled) return;
+        const bufferSize = this.ctx.sampleRate * 1.5;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const gain = this.ctx.createGain();
+        
+        // Lowpass filter for muffled explosion
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 1000;
+
+        gain.gain.setValueAtTime(1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 1.5);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        noise.start();
+    }
+
+    playScore() {
+        this.playTone(880, 'sine', 0.1, 0.5);
+        setTimeout(() => this.playTone(1760, 'sine', 0.2, 0.5), 100);
+    }
+
+    playEngine(pitch) {
+        // Continuous engine drone handled separately if needed, 
+        // but for simplicity we'll use periodic low tones based on speed
+        if (Math.random() > 0.8) {
+            this.playTone(100 + (pitch * 50), 'sawtooth', 0.1, 0.1);
+        }
+    }
+}
+
+// --- Object Pooling System ---
+class ObjectPool {
+    constructor(createFn, resetFn, initialSize = 50) {
+        this.createFn = createFn;
+        this.resetFn = resetFn;
+        this.pool = [];
+        this.active = [];
+        
+        for (let i = 0; i < initialSize; i++) {
+            this.pool.push(this.createFn());
+        }
+    }
+
+    get() {
+        let obj;
+        if (this.pool.length > 0) {
+            obj = this.pool.pop();
+        } else {
+            obj = this.createFn();
+        }
+        this.active.push(obj);
+        return obj;
+    }
+
+    release(obj) {
+        const index = this.active.indexOf(obj);
+        if (index > -1) {
+            this.active.splice(index, 1);
+            this.resetFn(obj);
+            this.pool.push(obj);
+        }
+    }
+
+    releaseAll() {
+        while (this.active.length > 0) {
+            this.release(this.active[0]);
+        }
+    }
+}
+
+// --- Game Entities ---
+
+class Particle {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.life = 0;
+        this.maxLife = 0;
+        this.color = '#fff';
+        this.size = 0;
+    }
+}
+
+class Obstacle {
+    constructor() {
+        this.x = 0;
+        this.y = -100;
+        this.width = 0;
+        this.height = 0;
+        this.type = 'block'; // block, triangle, spinner
+        this.active = false;
+        this.rotation = 0;
+        this.rotSpeed = 0;
+    }
+}
+
+class Star {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.z = 0;
+        this.pz = 0; // previous z for trail
+    }
+}
+
+// --- Main Game Class ---
+class NeonRacer {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d', { alpha: false }); // Optimize for no transparency on base
+        this.audio = new AudioSynth();
+        
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.resize();
+
+        // Game State
+        this.isPlaying = false;
+        this.score = 0;
+        this.speed = 0;
+        this.baseSpeed = 10;
+        this.maxSpeed = 60;
+        this.distance = 0;
+        this.highScore = parseInt(localStorage.getItem('neonRacerHighScore')) || 0;
+
+        // Player
+        this.player = {
+            x: this.width / 2,
+            y: this.height - 100,
+            width: 40,
+            height: 60,
+            vx: 0,
+            tilt: 0,
+            color: '#00f3ff'
+        };
+
+        // Inputs
+        this.keys = { left: false, right: false };
+        this.setupInputs();
+
+        // Pools
+        this.obstaclePool = new ObjectPool(
+            () => new Obstacle(),
+            (o) => { o.active = false; }
+        );
+        this.particlePool = new ObjectPool(
+            () => new Particle(),
+            (p) => { p.life = 0; }
+        );
+        this.starPool = new ObjectPool(
+            () => new Star(),
+            (s) => { s.z = 0; }
+        );
+
+        // Initialize Stars
+        for(let i=0; i<200; i++) {
+            const star = this.starPool.get();
+            star.x = (Math.random() - 0.5) * this.width * 2;
+            star.y = (Math.random() - 0.5) * this.height * 2;
+            star.z = Math.random() * this.width;
+            this.starPool.release(star);
+        }
+
+        // UI Elements
+        this.uiScore = document.getElementById('scoreDisplay');
+        this.uiSpeed = document.getElementById('speedFill');
+        this.startMenu = document.getElementById('startMenu');
+        this.gameOverMenu = document.getElementById('gameOverMenu');
+        this.finalScoreEl = document.getElementById('finalScore');
+        this.highScoreEl = document.getElementById('highScoreLabel');
+
+        // Bindings
+        this.loop = this.loop.bind(this);
+        
+        // Event Listeners for UI
+        document.getElementById('startBtn').addEventListener('click', () => this.startGame());
+        document.getElementById('restartBtn').addEventListener('click', () => this.startGame());
+        
+        // Touch controls
+        const btnLeft = document.getElementById('btnLeft');
+        const btnRight = document.getElementById('btnRight');
+        
+        const handleTouchStart = (dir) => (e) => { e.preventDefault(); this.keys[dir] = true; };
+        const handleTouchEnd = (dir) => (e) => { e.preventDefault(); this.keys[dir] = false; };
+
+        btnLeft.addEventListener('touchstart', handleTouchStart('left'));
+        btnLeft.addEventListener('touchend', handleTouchEnd('left'));
+        btnLeft.addEventListener('mousedown', handleTouchStart('left'));
+        btnLeft.addEventListener('mouseup', handleTouchEnd('left'));
+
+        btnRight.addEventListener('touchstart', handleTouchStart('right'));
+        btnRight.addEventListener('touchend', handleTouchEnd('right'));
+        btnRight.addEventListener('mousedown', handleTouchStart('right'));
+        btnRight.addEventListener('mouseup', handleTouchEnd('right'));
+
+        // Start Loop
+        requestAnimationFrame(this.loop);
+    }
+
+    resize() {
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+        if(!this.isPlaying) {
+            this.player.x = this.width / 2;
+            this.player.y = this.height - 100;
+        }
+    }
+
+    setupInputs() {
+        window.addEventListener('resize', () => this.resize());
+        
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') this.keys.left = true;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') this.keys.right = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') this.keys.left = false;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') this.keys.right = false;
+        });
+    }
+
+    startGame() {
+        this.audio.resume();
+        this.isPlaying = true;
+        this.score = 0;
+        this.speed = this.baseSpeed;
+        this.distance = 0;
+        this.player.x = this.width / 2;
+        this.player.vx = 0;
+        this.player.tilt = 0;
+        
+        this.obstaclePool.releaseAll();
+        this.particlePool.releaseAll();
+        
+        this.startMenu.classList.add('hidden');
+        this.gameOverMenu.classList.add('hidden');
+        
+        this.uiScore.innerText = '0';
+    }
+
+    gameOver() {
+        this.isPlaying = false;
+        this.audio.playCrash();
+        
+        if (this.score > this.highScore) {
+            this.highScore = this.score;
+            localStorage.setItem('neonRacerHighScore', this.highScore);
+        }
+
+        this.finalScoreEl.innerText = Math.floor(this.score);
+        this.highScoreEl.innerText = `رکورد قبلی: ${this.highScore}`;
+        this.gameOverMenu.classList.remove('hidden');
+        
+        // Create explosion particles
+        for(let i=0; i<50; i++) {
+            const p = this.particlePool.get();
+            p.x = this.player.x;
+            p.y = this.player.y;
+            p.vx = (Math.random() - 0.5) * 20;
+            p.vy = (Math.random() - 0.5) * 20;
+            p.life = 1.0;
+            p.maxLife = 1.0;
+            p.color = this.player.color;
+            p.size = Math.random() * 5 + 2;
+        }
+    }
+
+    spawnObstacle() {
+        const obs = this.obstaclePool.get();
+        obs.active = true;
+        obs.y = -100;
+        obs.width = 60 + Math.random() * 40;
+        obs.height = 40;
+        obs.x = Math.random() * (this.width - obs.width);
+        
+        const rand = Math.random();
+        if (rand < 0.3) obs.type = 'spinner';
+        else if (rand < 0.6) obs.type = 'triangle';
+        else obs.type = 'block';
+
+        obs.rotation = 0;
+        obs.rotSpeed = (Math.random() - 0.5) * 0.2;
+    }
+
+    createExplosion(x, y, color, count = 10) {
+        for(let i=0; i<count; i++) {
+            const p = this.particlePool.get();
+            p.x = x;
+            p.y = y;
+            p.vx = (Math.random() - 0.5) * 10;
+            p.vy = (Math.random() - 0.5) * 10;
+            p.life = 1.0;
+            p.maxLife = 1.0;
+            p.color = color;
+            p.size = Math.random() * 4 + 1;
+        }
+    }
+
+    update(dt) {
+        if (!this.isPlaying) {
+            // Attract mode camera movement
+            this.distance += 2;
+            return;
+        }
+
+        // Increase difficulty
+        this.speed = Math.min(this.maxSpeed, this.baseSpeed + (this.score * 0.05));
+        this.distance += this.speed;
+        this.score += this.speed * 0.01;
+        
+        this.uiScore.innerText = Math.floor(this.score);
+        this.uiSpeed.style.width = `${(this.speed / this.maxSpeed) * 100}%`;
+
+        // Player Physics
+        const accel = 1.5;
+        const friction = 0.92;
+        const maxVx = 15;
+
+        if (this.keys.left) this.player.vx -= accel;
+        if (this.keys.right) this.player.vx += accel;
+
+        this.player.vx *= friction;
+        this.player.x += this.player.vx;
+
+        // Boundaries
+        if (this.player.x < this.player.width/2) {
+            this.player.x = this.player.width/2;
+            this.player.vx = -this.player.vx * 0.5;
+        }
+        if (this.player.x > this.width - this.player.width/2) {
+            this.player.x = this.width - this.player.width/2;
+            this.player.vx = -this.player.vx * 0.5;
+        }
+
+        // Tilt effect
+        this.player.tilt = this.player.vx * 2;
+
+        // Spawn Obstacles
+        if (Math.random() < 0.02 + (this.score * 0.0001)) {
+            this.spawnObstacle();
+        }
+
+        // Update Obstacles
+        this.obstaclePool.active.forEach(obs => {
+            obs.y += this.speed;
+            if (obs.type === 'spinner') obs.rotation += obs.rotSpeed;
+
+            // Collision Detection (AABB with slight forgiveness)
+            const hitBoxPadding = 10;
+            if (
+                this.player.x - this.player.width/2 + hitBoxPadding < obs.x + obs.width &&
+                this.player.x + this.player.width/2 - hitBoxPadding > obs.x &&
+                this.player.y - this.player.height/2 + hitBoxPadding < obs.y + obs.height &&
+                this.player.y + this.player.height/2 - hitBoxPadding > obs.y
+            ) {
+                this.gameOver();
+            }
+
+            // Remove off-screen
+            if (obs.y > this.height + 100) {
+                this.obstaclePool.release(obs);
+                this.audio.playScore(); // Sound for passing obstacle
+            }
+        });
+
+        // Update Particles
+        this.particlePool.active.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 0.02;
+            p.vy += 0.5; // Gravity
+        });
+        
+        // Cleanup dead particles
+        for (let i = this.particlePool.active.length - 1; i >= 0; i--) {
+            if (this.particlePool.active[i].life <= 0) {
+                this.particlePool.release(this.particlePool.active[i]);
+            }
+        }
+
+        // Engine sound pitch modulation
+        if (Math.random() < 0.1) {
+            this.audio.playEngine(this.speed / this.maxSpeed);
+        }
+    }
+
+    draw() {
+        // Clear with trail effect
+        this.ctx.fillStyle = 'rgba(5, 5, 5, 0.4)';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+
+        // Draw Grid Floor (Pseudo-3D)
+        this.ctx.save();
+        this.ctx.strokeStyle = 'rgba(0, 243, 255, 0.15)';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        
+        const horizonY = this.height * 0.3;
+        const centerX = this.width / 2;
+        
+        // Vertical lines perspective
+        for (let i = -10; i <= 10; i++) {
+            const x = centerX + i * 100;
+            this.ctx.moveTo(centerX + i * 20, horizonY);
+            this.ctx.lineTo(x * 4, this.height);
+        }
+        
+        // Horizontal moving lines
+        const offset = (this.distance % 100) / 100;
+        for (let i = 0; i < 10; i++) {
+            const y = horizonY + Math.pow((i + offset) / 10, 3) * (this.height - horizonY);
+            this.ctx.moveTo(0, y);
+            this.ctx.lineTo(this.width, y);
+        }
+        this.ctx.stroke();
+        this.ctx.restore();
+
+        // Draw Stars (Warp effect)
+        this.starPool.active.forEach(star => {
+            star.z -= this.speed * 0.5;
+            if (star.z <= 0) {
+                star.z = this.width;
+                star.x = (Math.random() - 0.5) * this.width * 2;
+                star.y = (Math.random() - 0.5) * this.height * 2;
+            }
+
+            const sx = (star.x / star.z) * this.width + centerX;
+            const sy = (star.y / star.z) * this.height + horizonY;
+            const size = (1 - star.z / this.width) * 4;
+
+            if (sx > 0 && sx < this.width && sy > horizonY) {
+                this.ctx.fillStyle = '#fff';
+                this.ctx.globalAlpha = (1 - star.z / this.width);
+                this.ctx.beginPath();
+                this.ctx.arc(sx, sy, size, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        });
+        this.ctx.globalAlpha = 1;
+
+        // Draw Obstacles
+        this.obstaclePool.active.forEach(obs => {
+            this.ctx.save();
+            this.ctx.translate(obs.x + obs.width/2, obs.y + obs.height/2);
+            
+            if (obs.type === 'spinner') {
+                this.ctx.rotate(obs.rotation);
+                this.ctx.shadowBlur = 20;
+                this.ctx.shadowColor = '#ff00ff';
+                this.ctx.strokeStyle = '#ff00ff';
+                this.ctx.lineWidth = 3;
+                this.ctx.strokeRect(-obs.width/2, -obs.height/2, obs.width, obs.height);
+                
+                // Inner X
+                this.ctx.beginPath();
+                this.ctx.moveTo(-obs.width/2, -obs.height/2);
+                this.ctx.lineTo(obs.width/2, obs.height/2);
+                this.ctx.moveTo(obs.width/2, -obs.height/2);
+                this.ctx.lineTo(-obs.width/2, obs.height/2);
+                this.ctx.stroke();
+            } else if (obs.type === 'triangle') {
+                this.ctx.shadowBlur = 15;
+                this.ctx.shadowColor = '#ffee00';
+                this.ctx.fillStyle = 'rgba(255, 238, 0, 0.2)';
+                this.ctx.strokeStyle = '#ffee00';
+                this.ctx.lineWidth = 3;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, -obs.height/2);
+                this.ctx.lineTo(obs.width/2, obs.height/2);
+                this.ctx.lineTo(-obs.width/2, obs.height/2);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.stroke();
+            } else {
+                // Block
+                this.ctx.shadowBlur = 15;
+                this.ctx.shadowColor = '#00ff41';
+                this.ctx.strokeStyle = '#00ff41';
+                this.ctx.lineWidth = 3;
+                this.ctx.strokeRect(-obs.width/2, -obs.height/2, obs.width, obs.height);
+                
+                // Scanline effect
+                this.ctx.fillStyle = 'rgba(0, 255, 65, 0.3)';
+                this.ctx.fillRect(-obs.width/2, -obs.height/2 + (Date.now() % 50)/50 * obs.height, obs.width, 2);
+            }
+            
+            this.ctx.restore();
+        });
+
+        // Draw Player
+        if (this.isPlaying) {
+            this.ctx.save();
+            this.ctx.translate(this.player.x, this.player.y);
+            this.ctx.rotate(this.player.tilt * Math.PI / 180);
+            
+            // Glow
+            this.ctx.shadowBlur = 25;
+            this.ctx.shadowColor = this.player.color;
+            
+            // Ship Body
+            this.ctx.fillStyle = '#000';
+            this.ctx.strokeStyle = this.player.color;
+            this.ctx.lineWidth = 3;
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, -this.player.height/2);
+            this.ctx.lineTo(this.player.width/2, this.player.height/2);
+            this.ctx.lineTo(0, this.player.height/2 - 10);
+            this.ctx.lineTo(-this.player.width/2, this.player.height/2);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.stroke();
+
+            // Engine Thruster
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = '#ff00ff';
+            this.ctx.fillStyle = '#ff00ff';
+            this.ctx.beginPath();
+            const flicker = Math.random() * 10;
+            this.ctx.moveTo(-5, this.player.height/2 - 5);
+            this.ctx.lineTo(5, this.player.height/2 - 5);
+            this.ctx.lineTo(0, this.player.height/2 + 20 + flicker);
+            this.ctx.fill();
+
+            this.ctx.restore();
+        }
+
+        // Draw Particles
+        this.particlePool.active.forEach(p => {
+            this.ctx.save();
+            this.ctx.globalAlpha = p.life;
+            this.ctx.fillStyle = p.color;
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = p.color;
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+        });
+    }
+
+    loop() {
+        this.update();
+        this.draw();
+        requestAnimationFrame(this.loop);
+    }
+}
+
+// Initialize Game when DOM is ready
+window.onload = () => {
+    const game = new NeonRacer();
+};
+
+</script>
+</body>
+</html>
