@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Dash: Cyber Core</title>
+    <style>
+        /* --- CSS VARIABLES & RESET --- */
+        :root {
+            --bg-color: #050510;
+            --primary-neon: #00f3ff; /* Cyan */
+            --secondary-neon: #ff00ff; /* Magenta */
+            --accent-neon: #39ff14; /* Lime */
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --font-main: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: #ffffff;
+            font-family: var(--font-main);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- CANVAS --- */
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- UI LAYER (GLASSMORPHISM) --- */
+        #uiLayer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none; /* Let clicks pass through to canvas when playing */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .screen {
+            pointer-events: auto;
+            text-align: center;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            padding: 2rem 3rem;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            opacity: 0;
+            transform: scale(0.9);
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: #fff;
+            text-shadow: 0 0 10px var(--primary-neon), 0 0 20px var(--primary-neon);
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--secondary-neon);
+            text-shadow: 0 0 10px var(--secondary-neon);
+        }
+
+        p {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            color: #ddd;
+        }
+
+        .score-display {
+            font-size: 4rem;
+            font-weight: bold;
+            color: var(--accent-neon);
+            text-shadow: 0 0 15px var(--accent-neon);
+            margin: 1rem 0;
+        }
+
+        button {
+            background: linear-gradient(45deg, var(--primary-neon), #0066ff);
+            border: none;
+            padding: 15px 40px;
+            color: #000;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 0 15px var(--primary-neon);
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 25px var(--primary-neon), 0 0 50px var(--primary-neon);
+            background: linear-gradient(45deg, #00ffff, #0088ff);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 5;
+            pointer-events: none;
+            display: none;
+        }
+
+        .hud-item {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 5px var(--primary-neon);
+            margin-bottom: 10px;
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; }
+            .screen { padding: 1.5rem 2rem; width: 90%; }
+            .score-display { font-size: 3rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- HUD -->
+    <div id="hud">
+        <div class="hud-item">SCORE: <span id="currentScore">0</span></div>
+        <div class="hud-item">HIGH SCORE: <span id="highScoreDisplay">0</span></div>
+    </div>
+
+    <!-- UI Screens -->
+    <div id="uiLayer">
+        <!-- Start Screen -->
+        <div id="startScreen" class="screen active">
+            <h1>Neon Dash</h1>
+            <p>Cyber Core Edition</p>
+            <p style="font-size: 0.9rem; opacity: 0.8;">Tap, Click, or Spacebar to Jump<br>Double Tap for Double Jump</p>
+            <button id="startBtn">Initialize Run</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="screen">
+            <h2>System Failure</h2>
+            <p>Run Terminated</p>
+            <div class="score-display" id="finalScore">0</div>
+            <button id="restartBtn">Reboot System</button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * NEON DASH: CYBER CORE
+         * A high-performance, single-file HTML5 game.
+         * Architecture: Modular ES6 Classes within a self-executing context.
+         */
+
+        (function() {
+            'use strict';
+
+            // --- CONFIGURATION ---
+            const CONFIG = {
+                gravity: 0.6,
+                jumpForce: -12,
+                doubleJumpForce: -10,
+                speed: 6,
+                speedIncrement: 0.001,
+                maxSpeed: 15,
+                spawnRate: 90, // Frames between spawns
+                colors: {
+                    player: '#00f3ff',
+                    obstacle: '#ff00ff',
+                    particle: '#39ff14',
+                    bg: '#050510'
+                }
+            };
+
+            // --- UTILS ---
+            const Utils = {
+                randomRange: (min, max) => Math.random() * (max - min) + min,
+                checkCollision: (rect1, rect2) => {
+                    return (
+                        rect1.x < rect2.x + rect2.w &&
+                        rect1.x + rect1.w > rect2.x &&
+                        rect1.y < rect2.y + rect2.h &&
+                        rect1.y + rect1.h > rect2.y
+                    );
+                }
+            };
+
+            // --- AUDIO SYSTEM (Synthesized) ---
+            class AudioController {
+                constructor() {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    this.enabled = true;
+                }
+
+                playTone(freq, type, duration) {
+                    if (!this.enabled) return;
+                    if (this.ctx.state === 'suspended') this.ctx.resume();
+
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    
+                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                }
+
+                playJump() { this.playTone(400, 'sine', 0.1); }
+                playDoubleJump() { this.playTone(600, 'sine', 0.1); }
+                playCrash() { this.playTone(100, 'sawtooth', 0.3); }
+                playScore() { this.playTone(800, 'square', 0.05); }
+            }
+
+            // --- PARTICLE SYSTEM (Object Pooling Concept) ---
+            class Particle {
+                constructor(x, y, color) {
+                    this.x = x;
+                    this.y = y;
+                    this.size = Utils.randomRange(2, 5);
+                    this.speedX = Utils.randomRange(-3, 3);
+                    this.speedY = Utils.randomRange(-3, 3);
+                    this.color = color;
+                    this.life = 1.0;
+                    this.decay = Utils.randomRange(0.02, 0.05);
+                    this.active = true;
+                }
+
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    this.life -= this.decay;
+                    if (this.life <= 0) this.active = false;
+                }
+
+                draw(ctx) {
+                    ctx.globalAlpha = this.life;
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
+            }
+
+            class ParticleSystem {
+                constructor() {
+                    this.particles = [];
+                }
+
+                emit(x, y, color, count = 10) {
+                    for (let i = 0; i < count; i++) {
+                        this.particles.push(new Particle(x, y, color));
+                    }
+                }
+
+                updateAndDraw(ctx) {
+                    for (let i = this.particles.length - 1; i >= 0; i--) {
+                        const p = this.particles[i];
+                        p.update();
+                        p.draw(ctx);
+                        if (!p.active) this.particles.splice(i, 1);
+                    }
+                }
+                
+                clear() { this.particles = []; }
+            }
+
+            // --- GAME ENTITIES ---
+            class Player {
+                constructor(gameWidth, gameHeight) {
+                    this.w = 40;
+                    this.h = 40;
+                    this.x = 100;
+                    this.y = gameHeight - 150;
+                    this.vy = 0;
+                    this.jumpCount = 0;
+                    this.maxJumps = 2;
+                    this.grounded = false;
+                    this.rotation = 0;
+                    this.trail = [];
+                }
+
+                jump(audio) {
+                    if (this.jumpCount < this.maxJumps) {
+                        this.vy = this.jumpCount === 0 ? CONFIG.jumpForce : CONFIG.doubleJumpForce;
+                        this.jumpCount++;
+                        this.grounded = false;
+                        audio.playJump();
+                        
+                        // Add trail effect logic handled in draw
+                    }
+                }
+
+                reset(gameHeight) {
+                    this.y = gameHeight - 150;
+                    this.vy = 0;
+                    this.jumpCount = 0;
+                    this.grounded = true;
+                    this.rotation = 0;
+                    this.trail = [];
+                }
+
+                update(gameHeight, inputActive) {
+                    // Gravity
+                    this.vy += CONFIG.gravity;
+                    this.y += this.vy;
+
+                    // Ground Collision
+                    const floor = gameHeight - 100;
+                    if (this.y + this.h > floor) {
+                        this.y = floor - this.h;
+                        this.vy = 0;
+                        this.grounded = true;
+                        this.jumpCount = 0;
+                        this.rotation = 0; // Reset rotation on ground
+                    } else {
+                        // Rotate while jumping
+                        this.rotation += 0.15;
+                    }
+
+                    // Trail Logic
+                    if (inputActive || !this.grounded) {
+                        this.trail.push({x: this.x, y: this.y, alpha: 0.6});
+                        if (this.trail.length > 10) this.trail.shift();
+                    }
+                }
+
+                draw(ctx) {
+                    // Draw Trail
+                    this.trail.forEach((t, index) => {
+                        t.x -= CONFIG.speed; // Move trail with world
+                        t.alpha -= 0.05;
+                        if(t.alpha > 0) {
+                            ctx.fillStyle = `rgba(0, 243, 255, ${t.alpha})`;
+                            ctx.fillRect(t.x, t.y, this.w, this.h);
+                        }
+                    });
+
+                    // Draw Player
+                    ctx.save();
+                    ctx.translate(this.x + this.w/2, this.y + this.h/2);
+                    ctx.rotate(this.rotation);
+                    
+                    // Neon Glow
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = CONFIG.colors.player;
+                    ctx.fillStyle = CONFIG.colors.player;
+                    
+                    // Shape
+                    ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
+                    
+                    // Inner detail
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(-this.w/4, -this.h/4, this.w/2, this.h/2);
+                    
+                    ctx.restore();
+                }
+            }
+
+            class Obstacle {
+                constructor(gameWidth, gameHeight) {
+                    this.w = Utils.randomRange(30, 60);
+                    this.h = Utils.randomRange(40, 80);
+                    this.x = gameWidth;
+                    this.y = gameHeight - 100 - this.h;
+                    this.markedForDeletion = false;
+                    this.type = Math.random() > 0.5 ? 'ground' : 'air';
+                    
+                    if (this.type === 'air') {
+                        this.y -= Utils.randomRange(60, 120);
+                        this.h = 40; 
+                        this.w = 60;
+                    }
+                }
+
+                update(speed) {
+                    this.x -= speed;
+                    if (this.x + this.w < 0) this.markedForDeletion = true;
+                }
+
+                draw(ctx) {
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = CONFIG.colors.obstacle;
+                    ctx.fillStyle = CONFIG.colors.obstacle;
+                    
+                    // Draw skewed rectangle for cyber feel
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y + this.h);
+                    ctx.lineTo(this.x + this.w, this.y + this.h);
+                    ctx.lineTo(this.x + this.w - 10, this.y);
+                    ctx.lineTo(this.x + 10, this.y);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.shadowBlur = 0; // Reset
+                }
+            }
+
+            class Background {
+                constructor(width, height) {
+                    this.width = width;
+                    this.height = height;
+                    this.stars = [];
+                    for(let i=0; i<50; i++) {
+                        this.stars.push({
+                            x: Math.random() * width,
+                            y: Math.random() * height,
+                            size: Math.random() * 2,
+                            speed: Math.random() * 0.5 + 0.1
+                        });
+                    }
+                    this.gridOffset = 0;
+                }
+
+                update(speed) {
+                    this.gridOffset -= speed * 0.5;
+                    if (this.gridOffset <= -40) this.gridOffset = 0;
+
+                    this.stars.forEach(star => {
+                        star.x -= star.speed;
+                        if (star.x < 0) star.x = this.width;
+                    });
+                }
+
+                draw(ctx) {
+                    // Clear with fade for motion blur effect (optional, using solid clear here for crispness)
+                    ctx.fillStyle = CONFIG.colors.bg;
+                    ctx.fillRect(0, 0, this.width, this.height);
+
+                    // Draw Stars
+                    ctx.fillStyle = '#ffffff';
+                    this.stars.forEach(star => {
+                        ctx.globalAlpha = Math.random() * 0.5 + 0.3;
+                        ctx.beginPath();
+                        ctx.arc(star.x, star.y, star.size, 0, Math.PI*2);
+                        ctx.fill();
+                    });
+                    ctx.globalAlpha = 1.0;
+
+                    // Draw Cyber Grid Floor
+                    ctx.strokeStyle = 'rgba(0, 243, 255, 0.2)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    
+                    // Horizon line
+                    const horizon = this.height - 100;
+                    ctx.moveTo(0, horizon);
+                    ctx.lineTo(this.width, horizon);
+
+                    // Vertical moving lines
+                    for (let i = this.gridOffset; i < this.width; i += 40) {
+                        ctx.moveTo(i, horizon);
+                        ctx.lineTo(i - (this.width - i) * 2, this.height);
+                    }
+                    
+                    // Horizontal perspective lines
+                    for(let i=0; i<100; i+=20) {
+                         let y = horizon + i*i*0.05;
+                         if(y > this.height) break;
+                         ctx.moveTo(0, y);
+                         ctx.lineTo(this.width, y);
+                    }
+
+                    ctx.stroke();
+                }
+            }
+
+            // --- MAIN GAME ENGINE ---
+            class Game {
+                constructor() {
+                    this.canvas = document.getElementById('gameCanvas');
+                    this.ctx = this.canvas.getContext('2d');
+                    this.ui = {
+                        start: document.getElementById('startScreen'),
+                        gameOver: document.getElementById('gameOverScreen'),
+                        hud: document.getElementById('hud'),
+                        score: document.getElementById('currentScore'),
+                        highScore: document.getElementById('highScoreDisplay'),
+                        finalScore: document.getElementById('finalScore'),
+                        startBtn: document.getElementById('startBtn'),
+                        restartBtn: document.getElementById('restartBtn')
+                    };
+
+                    this.audio = new AudioController();
+                    this.resize();
+                    
+                    this.state = 'MENU'; // MENU, PLAYING, GAMEOVER
+                    this.score = 0;
+                    this.highScore = localStorage.getItem('neonDashHighScore') || 0;
+                    this.frames = 0;
+                    this.gameSpeed = CONFIG.speed;
+
+                    this.player = new Player(this.width, this.height);
+                    this.background = new Background(this.width, this.height);
+                    this.obstacles = [];
+                    this.particles = new ParticleSystem();
+
+                    this.bindEvents();
+                    this.loop = this.loop.bind(this);
+                    requestAnimationFrame(this.loop);
+                }
+
+                resize() {
+                    this.width = window.innerWidth;
+                    this.height = window.innerHeight;
+                    this.canvas.width = this.width;
+                    this.canvas.height = this.height;
+                    if (this.player) {
+                        // Keep player on screen if resized
+                        if (this.player.y > this.height) this.player.y = this.height - 150;
+                    }
+                    if (this.background) {
+                        this.background.width = this.width;
+                        this.background.height = this.height;
+                    }
+                }
+
+                bindEvents() {
+                    window.addEventListener('resize', () => this.resize());
+                    
+                    const handleInput = (e) => {
+                        if (e.type === 'keydown' && e.code !== 'Space') return;
+                        if (e.type === 'keydown') e.preventDefault(); // Stop scrolling
+
+                        if (this.state === 'PLAYING') {
+                            this.player.jump(this.audio);
+                        }
+                    };
+
+                    window.addEventListener('keydown', handleInput);
+                    window.addEventListener('touchstart', handleInput, {passive: false});
+                    window.addEventListener('mousedown', handleInput);
+
+                    this.ui.startBtn.addEventListener('click', () => this.startGame());
+                    this.ui.restartBtn.addEventListener('click', () => this.startGame());
+                }
+
+                startGame() {
+                    this.state = 'PLAYING';
+                    this.score = 0;
+                    this.frames = 0;
+                    this.gameSpeed = CONFIG.speed;
+                    this.obstacles = [];
+                    this.particles.clear();
+                    this.player.reset(this.height);
+                    
+                    this.ui.start.classList.remove('active');
+                    this.ui.gameOver.classList.remove('active');
+                    this.ui.hud.style.display = 'block';
+                    this.ui.highScore.innerText = Math.floor(this.highScore);
+                    
+                    this.audio.playScore(); // Start sound
+                }
+
+                gameOver() {
+                    this.state = 'GAMEOVER';
+                    this.audio.playCrash();
+                    
+                    // Explosion effect
+                    this.particles.emit(
+                        this.player.x + this.player.w/2, 
+                        this.player.y + this.player.h/2, 
+                        CONFIG.colors.player, 
+                        30
+                    );
+
+                    if (this.score > this.highScore) {
+                        this.highScore = this.score;
+                        localStorage.setItem('neonDashHighScore', this.highScore);
+                    }
+
+                    setTimeout(() => {
+                        this.ui.finalScore.innerText = Math.floor(this.score);
+                        this.ui.hud.style.display = 'none';
+                        this.ui.gameOver.classList.add('active');
+                    }, 500);
+                }
+
+                update() {
+                    if (this.state !== 'PLAYING') {
+                        // Still update background and particles for menu effect
+                        this.background.update(2);
+                        this.particles.updateAndDraw(this.ctx);
+                        return;
+                    }
+
+                    this.frames++;
+                    this.score += 0.1;
+                    this.ui.score.innerText = Math.floor(this.score);
+
+                    // Increase difficulty
+                    if (this.gameSpeed < CONFIG.maxSpeed) {
+                        this.gameSpeed += CONFIG.speedIncrement;
+                    }
+
+                    this.background.update(this.gameSpeed);
+                    this.player.update(this.height, true); // true = input active for trail
+
+                    // Spawn Obstacles
+                    if (this.frames % Math.floor(CONFIG.spawnRate * (CONFIG.speed / this.gameSpeed)) === 0) {
+                        this.obstacles.push(new Obstacle(this.width, this.height));
+                    }
+
+                    // Update Obstacles & Collision
+                    for (let i = this.obstacles.length - 1; i >= 0; i--) {
+                        let obs = this.obstacles[i];
+                        obs.update(this.gameSpeed);
+                        
+                        // Simple AABB Collision with slight tolerance
+                        const hitBoxPlayer = {
+                            x: this.player.x + 5, y: this.player.y + 5,
+                            w: this.player.w - 10, h: this.player.h - 10
+                        };
+                        const hitBoxObs = {
+                            x: obs.x + 5, y: obs.y + 5,
+                            w: obs.w - 10, h: obs.h - 10
+                        };
+
+                        if (Utils.checkCollision(hitBoxPlayer, hitBoxObs)) {
+                            this.gameOver();
+                        }
+
+                        if (obs.markedForDeletion) {
+                            this.obstacles.splice(i, 1);
+                            this.audio.playScore(); // Sound for passing obstacle
+                        }
+                    }
+
+                    this.particles.updateAndDraw(this.ctx);
+                }
+
+                draw() {
+                    this.ctx.clearRect(0, 0, this.width, this.height);
+                    
+                    this.background.draw(this.ctx);
+                    
+                    if (this.state === 'PLAYING' || this.state === 'MENU') {
+                        this.obstacles.forEach(obs => obs.draw(this.ctx));
+                        if (this.state === 'PLAYING') {
+                            this.player.draw(this.ctx);
+                        }
+                    }
+                    
+                    this.particles.updateAndDraw(this.ctx);
+                }
+
+                loop() {
+                    this.update();
+                    this.draw();
+                    requestAnimationFrame(this.loop);
+                }
+            }
+
+            // Initialize Game when DOM is ready
+            window.onload = () => {
+                new Game();
+            };
+
+        })();
+    </script>
+</body>
+</html>
